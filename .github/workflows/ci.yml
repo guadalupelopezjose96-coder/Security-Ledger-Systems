@@ -10,6 +10,22 @@ jobs:
   audit-and-test:
     name: Compilación, Tests ACID y Auditoría SBOM
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: security_ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
@@ -20,7 +36,7 @@ jobs:
           components: clippy, rustfmt
 
       - name: Cache de dependencias Cargo
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -30,11 +46,24 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Ejecutar verificación de workspace
+      - name: Aplicar migraciones SQL
+        env:
+          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/security_ledger
         run: |
-          chmod +x verify_workspace.sh full_audit_verification.sh
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          if [ -d "migrations" ]; then
+            for f in $(ls migrations/*.sql | sort); do
+              echo "Aplicando migración: $f"
+              PGPASSWORD=postgrespassword psql -h localhost -U postgres -d security_ledger -f "$f"
+            done
+          fi
+
+      - name: Ejecutar pruebas y compilación Rust
+        env:
+          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/security_ledger
+        run: |
           cargo check --all-targets --all-features
-          cargo test --all-targets --all-features
+          cargo test --all-targets --all-features -- --nocapture
 
       - name: Validar integridad de artefactos de auditoría
         run: |

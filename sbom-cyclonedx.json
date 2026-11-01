@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.7",
-  "serialNumber": "urn:uuid:8dc1962d-818d-4d2f-953e-54ec9174c616",
+  "serialNumber": "urn:uuid:27160cde-9091-45fe-a7bb-2c19ff818edc",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-01T20:09:49+00:00",
+    "timestamp": "2026-11-01T20:14:11+00:00",
     "tools": {
       "components": [
         {
@@ -20,7 +20,7 @@
       ]
     },
     "component": {
-      "bom-ref": "e026ed80-6472-4232-9e0d-b7d90fca1490",
+      "bom-ref": "d7a9fc8f-7045-4aae-aa7a-9671da120df3",
       "type": "application",
       "name": ".",
       "properties": [
@@ -33,7 +33,7 @@
   },
   "components": [
     {
-      "bom-ref": "c19b753d-9d1d-433d-92a6-b52eedf765b8",
+      "bom-ref": "ad33d886-0f7c-4cfa-8a2b-211182dcf806",
       "type": "application",
       "name": "Cargo.lock",
       "properties": [
@@ -3841,15 +3841,15 @@
   ],
   "dependencies": [
     {
-      "ref": "c19b753d-9d1d-433d-92a6-b52eedf765b8",
+      "ref": "ad33d886-0f7c-4cfa-8a2b-211182dcf806",
       "dependsOn": [
         "pkg:cargo/sqlx_serializable_ledger@0.1.0"
       ]
     },
     {
-      "ref": "e026ed80-6472-4232-9e0d-b7d90fca1490",
+      "ref": "d7a9fc8f-7045-4aae-aa7a-9671da120df3",
       "dependsOn": [
-        "c19b753d-9d1d-433d-92a6-b52eedf765b8"
+        "ad33d886-0f7c-4cfa-8a2b-211182dcf806"
       ]
     },
     {
