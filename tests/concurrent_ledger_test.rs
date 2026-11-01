@@ -29,7 +29,7 @@ async fn test_concurrent_serializable_ledger_entries() -> Result<(), Box<dyn std
     let account_debit = Uuid::new_v4();
     let account_credit = Uuid::new_v4();
 
-    sqlx::query("SET LOCAL app.current_tenant_id = $1")
+    sqlx::query("SELECT set_config('app.current_tenant_id', $1, true)")
         .bind(test_tenant_id.to_string())
         .execute(&pool)
         .await?;
@@ -94,7 +94,7 @@ async fn test_concurrent_serializable_ledger_entries() -> Result<(), Box<dyn std
     );
 
     let mut check_tx = pool.begin().await?;
-    sqlx::query("SET LOCAL app.current_tenant_id = $1")
+    sqlx::query("SELECT set_config('app.current_tenant_id', $1, true)")
         .bind(test_tenant_id.to_string())
         .execute(&mut *check_tx)
         .await?;

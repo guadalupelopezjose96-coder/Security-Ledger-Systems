@@ -128,7 +128,7 @@ impl LedgerRepository {
             .execute(&mut *tx)
             .await?;
 
-        sqlx::query("SET LOCAL app.current_tenant_id = $1")
+        sqlx::query("SELECT set_config('app.current_tenant_id', $1, true)")
             .bind(cmd.tenant_id.to_string())
             .execute(&mut *tx)
             .await?;
