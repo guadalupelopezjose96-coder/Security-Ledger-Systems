@@ -46,8 +46,8 @@ impl LedgerRepository {
     pub fn new(pool: PgPool) -> Self {
         Self {
             pool,
-            max_retries: 5,
-            base_backoff_ms: 25,
+            max_retries: 25,
+            base_backoff_ms: 50,
         }
     }
 
