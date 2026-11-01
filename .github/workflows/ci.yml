@@ -1,0 +1,43 @@
+name: DevSecOps Production CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  audit-and-test:
+    name: Compilación, Tests ACID y Auditoría SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache de dependencias Cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Ejecutar verificación de workspace
+        run: |
+          chmod +x verify_workspace.sh full_audit_verification.sh
+          cargo check --all-targets --all-features
+          cargo test --all-targets --all-features
+
+      - name: Validar integridad de artefactos de auditoría
+        run: |
+          test -f sbom-cyclonedx.json
+          test -f THIRD-PARTY-NOTICES.txt
+          test -f references/BARTER_TAX_ANNEX.md
