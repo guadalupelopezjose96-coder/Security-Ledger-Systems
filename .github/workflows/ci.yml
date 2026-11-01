@@ -47,20 +47,19 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Aplicar migraciones SQL
-        env:
-          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/security_ledger
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
           if [ -d "migrations" ]; then
             for f in $(ls migrations/*.sql | sort); do
-              echo "Aplicando migración: $f"
-              PGPASSWORD=postgrespassword psql -h localhost -U postgres -d security_ledger -f "$f"
+              echo "Aplicando: $f"
+              PGPASSWORD=postgrespassword psql -h 127.0.0.1 -U postgres -d security_ledger -f "$f"
             done
           fi
 
       - name: Ejecutar pruebas y compilación Rust
         env:
-          DATABASE_URL: postgres://postgres:postgrespassword@localhost:5432/security_ledger
+          DATABASE_URL: postgres://postgres:postgrespassword@127.0.0.1:5432/security_ledger?sslmode=disable
+          RUST_BACKTRACE: 1
         run: |
           cargo check --all-targets --all-features
           cargo test --all-targets --all-features -- --nocapture
