@@ -1,0 +1,103 @@
+stages:
+  - compliance
+  - test
+  - build
+
+variables:
+  CARGO_HOME: "${CI_PROJECT_DIR}/.cargo"
+  RUST_BACKTRACE: "1"
+  IMAGE_TAG: "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+  IMAGE_LATEST: "${CI_REGISTRY_IMAGE}:latest"
+
+default:
+  interruptible: true
+
+.rust-base:
+  image: rust:1.80-slim-bookworm
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends pkg-config libssl-dev git postgresql-client
+    - rm -rf /var/lib/apt/lists/*
+  cache:
+    key:
+      files:
+        - Cargo.lock
+    paths:
+      - .cargo/bin/
+      - .cargo/registry/index/
+      - .cargo/registry/cache/
+      - .cargo/git/db/
+      - target/
+
+compliance:cargo-deny:
+  stage: compliance
+  extends: .rust-base
+  script:
+    - which cargo-deny || cargo install cargo-deny --locked
+    - cargo deny check licenses advisories bans
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+compliance:cargo-audit:
+  stage: compliance
+  extends: .rust-base
+  script:
+    - which cargo-audit || cargo install cargo-audit --locked
+    - cargo audit
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+compliance:clippy:
+  stage: compliance
+  extends: .rust-base
+  script:
+    - rustup component add clippy
+    - cargo clippy --all-targets --all-features -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+test:cargo-test-with-postgres:
+  stage: test
+  extends: .rust-base
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+  variables:
+    POSTGRES_DB: app_test_db
+    POSTGRES_USER: test_user
+    POSTGRES_PASSWORD: test_secure_password
+    POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    DATABASE_URL: "postgres://test_user:test_secure_password@postgres:5432/app_test_db"
+  script:
+    - echo "Esperando disponibilidad del socket de PostgreSQL..."
+    - export PGPASSWORD="${POSTGRES_PASSWORD}"
+    - until pg_isready -h postgres -p 5432 -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"; do sleep 1; done
+    - which sqlx || cargo install sqlx-cli --no-default-features --features postgres,native-tls --locked
+    - sqlx database setup --source migrations/
+    - RUST_LOG=info,sqlx_serializable_ledger=debug cargo test --all-targets --all-features -- --nocapture
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+build:docker-distroless:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  script:
+    - >-
+      /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${IMAGE_TAG}"
+      --destination "${IMAGE_LATEST}"
+      --cache=true
+      --cache-copy-layers=true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
