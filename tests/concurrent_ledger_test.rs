@@ -102,8 +102,8 @@ async fn test_concurrent_serializable_ledger_entries() -> Result<(), Box<dyn std
     let row = sqlx::query(
         r#"
         SELECT 
-            COALESCE(SUM(CASE WHEN direction = 'DEBIT' THEN amount_cents ELSE 0 END), 0) AS total_debits,
-            COALESCE(SUM(CASE WHEN direction = 'CREDIT' THEN amount_cents ELSE 0 END), 0) AS total_credits
+            COALESCE(SUM(CASE WHEN direction = 'DEBIT' THEN amount_cents ELSE 0 END), 0)::BIGINT AS total_debits,
+            COALESCE(SUM(CASE WHEN direction = 'CREDIT' THEN amount_cents ELSE 0 END), 0)::BIGINT AS total_credits
         FROM ledger_lines ll
         JOIN journal_entries je ON ll.journal_entry_id = je.id
         WHERE je.tenant_id = $1
